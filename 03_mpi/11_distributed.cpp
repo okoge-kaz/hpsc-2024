@@ -28,11 +28,19 @@ int main(int argc, char** argv) {
   MPI_Type_contiguous(5, MPI_DOUBLE, &MPI_BODY);
   MPI_Type_commit(&MPI_BODY);
   MPI_Win win;
-  MPI_Win_create(ibody, N / size * sizeof(Body), sizeof(Body), MPI_INFO_NULL, MPI_COMM_WORLD, &win);
+  MPI_Win_create(jbody, N / size * sizeof(Body), sizeof(Body), MPI_INFO_NULL, MPI_COMM_WORLD, &win);
+  // buffer (avoid receive buffer overwrite)
+  Body temp[N / size];
+
   for (int irank = 0; irank < size; irank++) {
     MPI_Win_fence(0, win);
-    MPI_Put(jbody, N / size, MPI_BODY, send_to, 0, N / size, MPI_BODY, win);
+    for (int i = 0; i < N / size; i++) {
+      temp[i] = jbody[i];
+    }
+
+    MPI_Put(temp, N / size, MPI_BODY, send_to, 0, N / size, MPI_BODY, win);
     MPI_Win_fence(0, win);
+
     for (int i = 0; i < N / size; i++) {
       for (int j = 0; j < N / size; j++) {
         double rx = ibody[i].x - jbody[j].x;
