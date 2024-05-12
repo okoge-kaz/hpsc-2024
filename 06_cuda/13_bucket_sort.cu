@@ -16,9 +16,31 @@ __global__ void fill_keys(int *keys, int *buckets, int *sum, int range) {
     int start = sum[index];
     int key = index;
     for (int i = 0; i < buckets[index]; i++) {
-      keys[start+i] = key;
+      keys[start + i] = key;
     }
   }
+}
+
+__global__ void exclusive_scan(int *d_input, int *d_output, int n) {
+  extern __shared__ int temp[];  // shared memory
+  int thid = threadIdx.x;
+  int pout = 0, pin = 1;
+
+  // Load input into shared memory. (exclusive scan)
+  temp[pout * n + thid] = (thid > 0) ? d_input[thid - 1] : 0;
+  __syncthreads();
+
+  for (int offset = 1; offset < n; offset *= 2) {
+    pout = 1 - pout;  // swap double buffer indices
+    pin = 1 - pout;
+    if (thid >= offset)
+      temp[pout * n + thid] = temp[pin * n + thid] + temp[pin * n + thid - offset];
+    else
+      temp[pout * n + thid] = temp[pin * n + thid];
+    __syncthreads();
+  }
+
+  d_output[thid] = temp[pout * n + thid];  // write output
 }
 
 int main() {
@@ -37,7 +59,7 @@ int main() {
   cudaMalloc(&d_keys, n * sizeof(int));
   cudaMalloc(&d_buckets, range * sizeof(int));
   cudaMalloc(&d_sum, range * sizeof(int));
-  cudaMemset(d_sum, 0, range * sizeof(int));     // set 0 to all elements
+  cudaMemset(d_sum, 0, range * sizeof(int));  // set 0 to all elements
 
   for (int i = 0; i < n; i++) {
     keys[i] = rand() % range;
@@ -48,7 +70,7 @@ int main() {
   // cudaMemcpy: copy memory from CPU to GPU
   cudaMemcpy(d_keys, keys, n * sizeof(int), cudaMemcpyHostToDevice);
   cudaMemcpy(d_buckets, buckets, range * sizeof(int), cudaMemcpyHostToDevice);
-  cudaMemset(d_buckets, 0, range * sizeof(int)); // set 0 to all elements
+  cudaMemset(d_buckets, 0, range * sizeof(int));  // set 0 to all elements
 
   int blockSize = 1024;
   int numBlocks = (n + blockSize - 1) / blockSize;
@@ -59,11 +81,7 @@ int main() {
   // cudaMemcpy: copy memory from GPU to CPU
   cudaMemcpy(buckets, d_buckets, range * sizeof(int), cudaMemcpyDeviceToHost);
 
-  sum[0] = 0;
-  for (int i = 1; i < range; i++) {
-    sum[i] = sum[i-1] + buckets[i-1];
-  }
-  cudaMemcpy(d_sum, sum, range * sizeof(int), cudaMemcpyHostToDevice);
+  exclusive_scan<<<1, range, range * sizeof(int)>>>(d_buckets, d_sum, range);
 
   fill_keys<<<numBlocks, blockSize>>>(d_keys, d_buckets, d_sum, range);
   cudaDeviceSynchronize();
