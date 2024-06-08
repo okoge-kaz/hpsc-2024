@@ -1,10 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-nx = 41
+nx = 161
 dx = 2 / (nx - 1)
-nt = 50
-dt = 0.01
+nt = 100
+dt = 0.005
 
 u = np.ones(nx)
 u[int(0.5 / dx) : int(1 / dx + 1)] = 2
