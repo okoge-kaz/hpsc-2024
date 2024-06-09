@@ -111,11 +111,27 @@ int main(int argc, char **argv) {
         u_global.resize(ny * nx);
         v_global.resize(ny * nx);
         p_global.resize(ny * nx);
+
+        // rank = 0 のみは、halo 部分に意味がある
+        for (int i = 0; i < nx; i++) {
+          u_global[i] = u[0][i];
+          v_global[i] = v[0][i];
+          p_global[i] = p[0][i];
+        }
       }
 
-      MPI_Gather(&u[1][0], local_ny * nx, MPI_DOUBLE, &u_global[0], local_ny * nx, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-      MPI_Gather(&v[1][0], local_ny * nx, MPI_DOUBLE, &v_global[0], local_ny * nx, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-      MPI_Gather(&p[1][0], local_ny * nx, MPI_DOUBLE, &p_global[0], local_ny * nx, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      vector<double> u_local(local_ny * nx), v_local(local_ny * nx), p_local(local_ny * nx);
+      for (int j = 1; j <= local_ny; j++) {
+        for (int i = 0; i < nx; i++) {
+          u_local[(j - 1) * nx + i] = u[j][i];
+          v_local[(j - 1) * nx + i] = v[j][i];
+          p_local[(j - 1) * nx + i] = p[j][i];
+        }
+      }
+
+      MPI_Gather(&u_local[0], local_ny * nx, MPI_DOUBLE, u_global.data() + nx, local_ny * nx, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      MPI_Gather(&v_local[0], local_ny * nx, MPI_DOUBLE, v_global.data() + nx, local_ny * nx, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      MPI_Gather(&p_local[0], local_ny * nx, MPI_DOUBLE, p_global.data() + nx, local_ny * nx, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
       if (rank == 0) {
         for (int j = 0; j < ny; j++) {
