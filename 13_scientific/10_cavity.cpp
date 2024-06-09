@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
   matrix vn(local_ny + 2, vector<double>(nx));
   matrix pn(local_ny + 2, vector<double>(nx));
 
-  initialize(u, v, p, b, local_ny + 2, nx);
+  initialize(u, v, p, b, local_ny, nx);
 
   ofstream ufile, vfile, pfile;
   if (rank == 0) {
@@ -143,7 +143,7 @@ int main(int argc, char **argv) {
 }
 
 void initialize(matrix &u, matrix &v, matrix &p, matrix &b, int local_ny, int nx) {
-  for (int j = 0; j < local_ny; j++) {
+  for (int j = 0; j < local_ny + 2; j++) {
     for (int i = 0; i < nx; i++) {
       u[j][i] = 0;
       v[j][i] = 0;
@@ -154,7 +154,7 @@ void initialize(matrix &u, matrix &v, matrix &p, matrix &b, int local_ny, int nx
 }
 
 void updateBoundaries_1(matrix &p, int local_ny, int nx, int rank, int size) {
-  for (int j = 1; j <= local_ny; j++) {
+  for (int j = 0; j <= local_ny; j++) {
     if (rank == size - 1 && j == local_ny) {
       continue;
     }
@@ -174,7 +174,7 @@ void updateBoundaries_1(matrix &p, int local_ny, int nx, int rank, int size) {
 }
 
 void updateBoundaries_2(matrix &u, matrix &v, int local_ny, int nx, int rank, int size) {
-  for (int j = 1; j <= local_ny; j++) {
+  for (int j = 0; j <= local_ny; j++) {
     if (rank == size - 1 && j == local_ny) {
       continue;
     }
