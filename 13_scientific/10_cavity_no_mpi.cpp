@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <vector>
+#include <omp.h>
 
 using namespace std;
 typedef vector<vector<double> > matrix;
@@ -40,6 +41,7 @@ int main() {
 
   for (int n = 0; n < nt; n++) {
     for (int j = 1; j < ny - 1; j++) {
+      #pragma omp parallel for
       for (int i = 1; i < nx - 1; i++) {
         // Compute b[j][i]
         b[j][i] = rho * (1 / dt * ((u[j][i + 1] - u[j][i - 1]) / (2 * dx) + (v[j + 1][i] - v[j - 1][i]) / (2 * dy)) -
@@ -53,6 +55,7 @@ int main() {
     }
     for (int it = 0; it < nit; it++) {
       for (int j = 0; j < ny; j++)
+      #pragma omp parallel for
         for (int i = 0; i < nx; i++)
           pn[j][i] = p[j][i];
       for (int j = 1; j < ny - 1; j++) {
